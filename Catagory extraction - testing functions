@@ -1,0 +1,113 @@
+CATEGORY_EXTRACTION_TEMPLATE = """
+    Use only the information provided in the prompt.
+    Find the category of the entity in the text below
+
+    If the field and value denote to some user's profile information, reply "USER_TRAITS"
+    If the field and value denote to something related to consent information, reply "CONSENT"
+    If the field and value denote to something related to the information on a product, reply "PRODUCT"
+    If the field and value denote to something that sounds like an identifier name, reply "ID"
+    If the field and value denote to something related to marketing preference of a user, reply "MARKETING_PREFERENCE"
+    If the field and value denote to something related to a website event such as checkout, view page, etc., reply "EVENT"
+    If the field and value denote to some advertisement campaign, reply "CAMPAIGN"
+    If the field and value do not make any obvious sense, reply with "UNKNOWN"
+
+    Text: {question}
+    Entity name: {key}
+    Entity value: {value}
+
+    Remember to reply in one word only.
+"""
+
+def extract_missing_category(question, key, value, session_store):
+  """
+  Extracts category for a key if it's not found in the catalog.
+
+  Args:
+      question (str): User's natural language question.
+      key (str): Extracted key from the question. - Entity name
+      value (str): Extracted value from the question. - Entity Value
+      session_store (dict): Dictionary containing pre-computed data about the organization's data schema.
+
+  Returns:
+      str: The predicted category for the key, or None if no category is found.
+  """
+
+  if key not in session_store["catalog_type_map"]:
+    print(f"Column {key} not found in catalog")
+
+    CATEGORY_EXTRACTION_PROMPT = CATEGORY_EXTRACTION_TEMPLATE.format(
+        question=question, key=key, value=value
+    )
+    print(f"Prompt for extracting category: \n{CATEGORY_EXTRACTION_PROMPT}")
+    required_category = llm.predict(CATEGORY_EXTRACTION_PROMPT)
+    print(f"Predicted category for {key}: {required_category}")
+
+    return required_category
+  else:
+    return None
+def nearest_neighbors_by_category(all_embeddings, target_embedding, category, column_category_map, k):
+  """
+  Finds nearest neighbors in the embeddings that belong to the specified category.
+
+  Args:
+      all_embeddings (dict): Dictionary containing all column embeddings.
+      target_embedding (object): Embedding for the extracted key.
+      category (str): Predicted category for the key.
+      column_category_map (dict): Dictionary mapping columns to their categories.
+      k (int): Number of nearest neighbors to find.
+
+  Returns:
+      list: List of column names that are nearest neighbors and belong to the specified category.
+  """
+
+  possible_entries = [
+      i
+      for i in find_top_k_nearest_words(
+          all_embeddings, target_embedding, k=k
+      )
+      if column_category_map[i] == category
+  ]
+
+  print(f"Best candidates with category '{category}': {possible_entries}")
+  return possible_entries
+
+def find_all_candidates(all_embeddings, target_embedding, k):
+  """
+  Finds nearest neighbors in all embeddings.
+
+  Args:
+      all_embeddings (dict): Dictionary containing all column embeddings.
+      target_embedding (object): Embedding for the extracted key.
+      k (int): Number of nearest neighbors to find.
+
+  Returns:
+      list: List of column names that are nearest neighbors.
+  """
+
+  possible_entries = [
+      i for i in find_top_k_nearest_words(all_embeddings, target_embedding, k=k)
+  ]
+
+  print(f"Top candidates after searching in all categories: {possible_entries}")
+  return possible_entries
+
+def extract_entity_info(key, session_store):
+  """
+  Extracts entity information for a given key.
+
+  Args:
+      key (str): Column name.
+      session_store (dict): Dictionary containing pre-computed data about the organization's data schema.
+
+  Returns:
+      dict: Dictionary containing entity information (name, possible_operators, text, metadata).
+  """
+
+  return {
+      "name": key,
+      "possible_operators": session_store["operators"][
+          session_store["catalog_type_map"][key].lower()
+      ],
+      "text": key,  # Assuming text is also the key for simplicity
+      "metadata": session_store["metadata"][key],
+  }
