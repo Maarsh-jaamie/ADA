@@ -218,3 +218,18 @@ def extract_entity_info(key, session_store):
       "text": key,  # Assuming text is also the key for simplicity
       "metadata": session_store["metadata"][key],
   }
+
+#Case 1: The presence of the column names in the catalog type map
+
+question = "Find users who are male and have a high income"
+key = "gder"
+value = "male"
+
+predicted_category = extract_missing_category(question, key, value, catalog_type_map)
+
+print("The value for the predicted catagory is :" , predicted_category)
+
+if predicted_category:
+  print(f"Predicted category for {key}: {predicted_category}")
+else:
+  print(f"Category found for {key} is present in the catagory map")
