@@ -1,3 +1,110 @@
+EXCLUDED_COLUMNS = [
+    "display_name",
+    "Linked Ucid",
+    "IdpBase",
+    "SegmentID",
+    "Ucid",
+    "Orgid",
+    "Datagroupid",
+    "__version",
+    "Datagroup",
+    "_zeotap_ts",
+    "Datasetname",
+    "_zeotap_filepath",
+    "phone_number",
+    "datasetId",
+]
+
+
+
+def call_catalog_for_testing(catalog_file_path):
+  """
+  Fetches catalog data from a local JSON file for testing.
+
+  Args:
+      catalog_file_path (str): Path to the JSON file containing sample catalog data.
+
+  Returns:
+      dict: The catalog data loaded from the JSON file.
+  """
+
+  # Load catalog data from the specified JSON file
+  # with open(catalog_file_path, "r") as f:
+  #     catalog_data = json.load(f)
+
+  with open(catalog_file_path, "r") as f:
+      catalog_data = json.load(f)
+
+  # Assuming the data structure is similar to the API response
+  # catalog = catalog_data.get("attributes", [])  # Handle potential absence of "attributes" key
+  # return catalog
+
+  # Assuming the data structure is similar to the API response
+  catalog = catalog_data.get("attributes", [])  # Handle potential absence of "attributes" key
+  catalog_refined = refine_columns(catalog, EXCLUDED_COLUMNS)  # Assuming refine_columns exists
+
+  return catalog_refined
+
+
+def refine_columns(catalog, excluded_columns):
+  """
+  Filters columns based on excluded columns.
+
+  Args:
+      catalog (list): List of column dictionaries.
+      excluded_columns (list): List of column names to exclude.
+
+  Returns:
+      list: Filtered list of column dictionaries.
+  """
+
+  return [column for column in catalog if column['name'] not in excluded_columns]
+
+
+import json
+
+# Replace 'path/to/your/catalog_api.json' with the actual path to your JSON file
+catalog_file_path = "/catalog_api.json"
+
+# Call the function to get the catalog data
+catalog_data = call_catalog_for_testing(catalog_file_path)
+
+# Example usage of the catalog data
+for column in catalog_data:
+    print(column["name"], column["dataType"])
+
+# Or, use the catalog data to create your catalog_type_map
+catalog_type_map = {column["name"]: column["dataType"] for column in catalog_data}
+
+# def get_catalog_attribute_type(input_catalog, app):
+#     """Get a map of attribute names and their dataType"""
+#     app.logger.info("[get_catalog_attribute_type] Fetching datatype for columns")
+#     output_catalog = {}
+#     for attribute in input_catalog:
+#         output_catalog[attribute["name"]] = attribute["dataType"]
+#     return output_catalog
+
+def get_catalog_attribute_type(input_catalog):
+    """
+    Get a map of attribute names and their dataType- without logging functionality
+    """
+    print("[get_catalog_attribute_type] Fetching datatype for columns")
+    output_catalog = {}
+    for attribute in input_catalog:
+        output_catalog[attribute["name"]] = attribute["dataType"]
+    return output_catalog
+
+
+SESSION_STORE = {}
+SESSION_STORE["all_column_embeddings"] = {}
+SESSION_STORE["all_value_embeddings"] = {}
+
+# Use call_catalog_for_testing instead of call_catalog
+SESSION_STORE["catalog"] = call_catalog_for_testing(catalog_file_path)
+SESSION_STORE["catalog_type_map"] = get_catalog_attribute_type(
+    SESSION_STORE["catalog"]
+)
+#########
 CATEGORY_EXTRACTION_TEMPLATE = """
     Use only the information provided in the prompt.
     Find the category of the entity in the text below
